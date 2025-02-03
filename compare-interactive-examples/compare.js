@@ -91,7 +91,11 @@ async function collectResults(
             newUrlForSlug,
             true
           );
-          ret = { slug, locale, old: {url: oldUrl, consoleResult: oldConsoleResult}, new: {url: newUrl, consoleResult: newConsoleResult} };
+          ret = {
+            slug, locale,
+            old: { url: oldUrlForSlug, consoleResult: oldConsoleResult },
+            new: { url: newUrlForSlug, consoleResult: newConsoleResult }
+          };
           console.log(ret);
         } catch (error) {
           console.error(
