@@ -16,7 +16,7 @@ export async function compareInteractiveExamples(
 ){
   console.log(`Comparing ${oldUrl} and ${newUrl}`);
   const results = await collectResults(oldUrl, newUrl, slugs);
-  fs.writeFileSync("compare-results.json", JSON.stringify(results, null, 2));
+  return results;
 }
 
 // Find eligible slugs to check.
@@ -91,7 +91,7 @@ async function collectResults(
             newUrlForSlug,
             true
           );
-          ret = { slug, oldConsoleResult, newConsoleResult };
+          ret = { slug, locale, old: {url: oldUrl, consoleResult: oldConsoleResult}, new: {url: newUrl, consoleResult: newConsoleResult} };
           console.log(ret);
         } catch (error) {
           console.error(
