@@ -1,6 +1,12 @@
 {
   "type": "module",
+  "scripts": {
+    "gather_slugs": "node gather_slugs.js",
+    "fetch_results": "node fetch_results.js",
+    "emit_diffs": "node emit_diffs.js"
+  },
   "dependencies": {
+    "dotenv": "^16.4.7",
     "front-matter": "^4.0.2",
     "puppeteer": "^24.1.1"
   }

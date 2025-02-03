@@ -1,38 +1,30 @@
 import path from "node:path";
 import fs from "node:fs";
-import { CONTENT_ROOT } from "../libs/env/index.js";
 import frontmatter from "front-matter";
 import puppeteer from "puppeteer";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
 
 const CONCURRENCY = 6;
-const MAX_RETRIES = 5;
 const HEADLESS = true;
 const BROWSER = "chrome";
 
 export async function compareInteractiveExamples(
   oldUrl,
-  newUrl
+  newUrl,
+  slugs
 ){
   console.log(`Comparing ${oldUrl} and ${newUrl}`);
-
-  // Gather slugs to check.
-  const slugs = await findSlugs();
-  console.log(`Found ${slugs.length} slugs to check.`);
-  fs.writeFileSync("compare-slugs.json", JSON.stringify(slugs, null, 2));
-
-  // Collect old and new output results from all slugs.
   const results = await collectResults(oldUrl, newUrl, slugs);
   fs.writeFileSync("compare-results.json", JSON.stringify(results, null, 2));
 }
 
 // Find eligible slugs to check.
-async function findSlugs(){
+export async function findSlugs(){
   const filesLookingInteresting = (
     await grepSystem(
       "EmbedInteractiveExample",
-      path.join(CONTENT_ROOT, "en-us", "web", "javascript")
+      path.join(process.env.CONTENT_ROOT, "en-us", "web", "javascript")
     )
   ).split("\n");
 
@@ -47,6 +39,11 @@ async function findSlugs(){
   );
 
   return slugs;
+}
+
+export async function diffInteractiveExamplesOutput(results) { 
+  console.log("TBD");
+  return [];
 }
 
 // This function collects the interactive javascript example console output from the
@@ -175,10 +172,10 @@ async function grepSystem(searchTerm, directory) {
   }
 }
 
-if (process.argv.length < 3) {
-  console.error("Usage: node compare.js <oldUlr> <newUrl>");
-  process.exit(1);
-}
-const oldUrl = process.argv[2];
-const newUrl = process.argv[3];
-await compareInteractiveExamples(oldUrl, newUrl);
+// if (process.argv.length < 3) {
+//   console.error("Usage: node compare.js <oldUlr> <newUrl>");
+//   process.exit(1);
+// }
+// const oldUrl = process.argv[2];
+// const newUrl = process.argv[3];
+// await compareInteractiveExamples(oldUrl, newUrl);
