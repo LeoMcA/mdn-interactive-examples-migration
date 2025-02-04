@@ -15,7 +15,14 @@ export async function compareInteractiveExamples(
   slugs
 ){
   console.log(`Comparing ${oldUrl} and ${newUrl}`);
-  const results = await collectResults(oldUrl, newUrl, slugs);
+  let results = [];
+  let locales = ["en-US"];
+  let tl = fs.readdirSync(process.env.TRANSLATED_CONTENT_ROOT)
+    .filter((entry) => !entry.startsWith(".") && fs.lstatSync(path.join(process.env.TRANSLATED_CONTENT_ROOT, entry)).isDirectory())
+  locales.push(...tl);
+  for (const locale of locales) {
+    results.push(...await collectResults(oldUrl, newUrl, slugs, locale));
+  }
   return results;
 }
 
@@ -42,8 +49,39 @@ export async function findSlugs(){
 }
 
 export async function diffInteractiveExamplesOutput(results) { 
-  console.log("TBD");
-  return [];
+  let diffs = [];
+  for (const result of results) {
+    const oldConsole = massageOldOutput(result.old.consoleResult);
+    const newConsole = result.new.consoleResult;
+    if (oldConsole !== newConsole) {
+      diffs.push({
+        slug: result.slug,
+        locale: result.locale,
+        old: { url: result.old.url, consoleResult: oldConsole },
+        new: { url: result.new.url, consoleResult: newConsole },
+      });
+    }
+  }
+  return diffs;
+}
+
+/**
+ * 
+ * @param {string} output 
+ * @returns {string}
+ */
+function massageOldOutput(output) { 
+  // remove leading > from each line
+  let ret = output.replace(/^> +/gm, "");
+  // handle quoting of single strings per line
+  const lines = ret.split("\n").map((line) => {
+    // if (line.startsWith('"') && line.endsWith('"')) {
+    //   return line.slice(1, -1);
+    // }
+    return line.trim();
+  });
+  ret = lines.join("\n");
+  return ret;
 }
 
 // This function collects the interactive javascript example console output from the
@@ -116,17 +154,23 @@ async function collectResults(
   return results;
 }
 
-// This function is used to get the console output from the JS example
-// the `queryCustomElement` parameter is used to determine if the JS example is
-// inside a custom element (new version) or not.
+/**
+This function is used to get the console output from the JS example
+the `queryCustomElement` parameter is used to determine if the JS example is
+inside a custom element (new version) or not.
+
+@param {Page} page - The puppeteer page object
+@param {string} url - The URL to load
+@param {boolean} queryCustomElement - Whether to query the custom element or not
+*/ 
 async function getConsoleOutputFromJSExample(
   page,
   url,
   queryCustomElement = false
 ) {
   let ret = "";
-  await page.goto(url, { timeout: 10000 });
   try {
+    await page.goto(url, { timeout: 15000 });
     if (queryCustomElement) {
       const interactiveExample = await page.waitForSelector(
         "interactive-example"
@@ -151,10 +195,14 @@ async function getConsoleOutputFromJSExample(
       ).contentFrame();
       const btn = await iframe.waitForSelector("#execute", { timeout: 10000 });
       await btn.click();
-      const consoleElement = await iframe.waitForSelector("#console", {
-        timeout: 5000,
-      });
-      const consoleText = await consoleElement.evaluate((el) => el.textContent);
+      const consoleElement = await iframe.waitForSelector("#console");
+      let attempts = 0;
+      let consoleText = ""; 
+      do {
+        await new Promise((resolve) => setTimeout(resolve, attempts * 1000));
+        attempts += 1;
+        consoleText = await consoleElement.evaluate((el) => el.textContent);
+      } while (consoleText === "" && attempts < 6);
       ret = consoleText.trim();
     }
   } catch (error) {
@@ -175,11 +223,3 @@ async function grepSystem(searchTerm, directory) {
     throw new Error(`Error executing grep: ${error}`);
   }
 }
-
-// if (process.argv.length < 3) {
-//   console.error("Usage: node compare.js <oldUlr> <newUrl>");
-//   process.exit(1);
-// }
-// const oldUrl = process.argv[2];
-// const newUrl = process.argv[3];
-// await compareInteractiveExamples(oldUrl, newUrl);
