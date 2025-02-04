@@ -29,8 +29,9 @@ def replace_macros(content, md_file):
         if path_match := re.search(r"^pages\/js\/(.*)$", built_path):
             filename = path_match.group(1)
             try:
+                meta = meta_map[filename]
                 path = os.path.join(interactive_examples_folder,
-                                    meta_map[filename]["exampleCode"])
+                                    meta["exampleCode"])
             except KeyError:
                 print(f"No such file: {filename}")
                 return match.group(0)  # keep the macro unchanged
@@ -38,7 +39,7 @@ def replace_macros(content, md_file):
             with open(path, "r") as file:
                 other_args = match.group(2).lstrip(",").strip()
                 code = file.read()
-                return f"""{{{{InteractiveExample{f"({other_args})" if other_args else ""}}}}}
+                return f"""{{{{InteractiveExample("{meta["title"]}"{f", {other_args}" if other_args else ""})}}}}
 
 ```js interactive-example
 {code}
