@@ -15,23 +15,23 @@ export async function compareInteractiveExamples(
   slugs
 ){
   console.log(`Comparing ${oldUrl} and ${newUrl}`);
-  let results = [];
-  let locales = ["en-US"];
-  let tl = fs.readdirSync(process.env.TRANSLATED_CONTENT_ROOT)
-    .filter((entry) => !entry.startsWith(".") && fs.lstatSync(path.join(process.env.TRANSLATED_CONTENT_ROOT, entry)).isDirectory())
-  locales.push(...tl);
-  for (const locale of locales) {
-    results.push(...await collectResults(oldUrl, newUrl, slugs, locale));
+  const ret = {};
+  for (const locale of Object.keys(slugs)) { 
+    ret[locale] = await collectResults(oldUrl, newUrl, slugs[locale], locale);
   }
-  return results;
+  return ret;
 }
 
-// Find eligible slugs to check.
-export async function findSlugs(){
+export function translatedLocales() {
+  return fs.readdirSync(process.env.TRANSLATED_CONTENT_ROOT)
+    .filter((entry) => !entry.startsWith(".") && fs.lstatSync(path.join(process.env.TRANSLATED_CONTENT_ROOT, entry)).isDirectory())
+}
+
+export async function findSlugs(locale="en-US") {
   const filesLookingInteresting = (
     await grepSystem(
       "EmbedInteractiveExample",
-      path.join(process.env.CONTENT_ROOT, "en-us", "web", "javascript")
+      path.join(locale === "en-US" ? process.env.CONTENT_ROOT : process.env.TRANSLATED_CONTENT_ROOT, locale, "web", "javascript")
     )
   ).split("\n");
 
@@ -50,16 +50,18 @@ export async function findSlugs(){
 
 export async function diffInteractiveExamplesOutput(results) { 
   let diffs = [];
-  for (const result of results) {
-    const oldConsole = massageOldOutput(result.old.consoleResult);
-    const newConsole = result.new.consoleResult;
-    if (oldConsole !== newConsole) {
-      diffs.push({
-        slug: result.slug,
-        locale: result.locale,
-        old: { url: result.old.url, consoleResult: oldConsole },
-        new: { url: result.new.url, consoleResult: newConsole },
-      });
+  for (const locale of Object.keys(results)) { 
+    for (const result of results[locale]) {
+      const oldConsole = massageOldOutput(result.old.consoleResult);
+      const newConsole = result.new.consoleResult;
+      if (oldConsole !== newConsole) {
+        diffs.push({
+          slug: result.slug,
+          locale: result.locale,
+          old: { url: result.old.url, consoleResult: oldConsole },
+          new: { url: result.new.url, consoleResult: newConsole },
+        });
+      }
     }
   }
   return diffs;
@@ -111,14 +113,13 @@ async function collectResults(
     const batch = slugs.slice(i, i + CONCURRENCY);
     const batchResults = await Promise.all(
       batch.map(async (slug) => {
-        // Create a new browser context and page for this slug
-        const context = await browser.createBrowserContext();
-        const page = await context.newPage();
         const oldUrlForSlug = `${oldUrl}/${locale}/docs/${slug}`;
         const newUrlForSlug = `${newUrl}/${locale}/docs/${slug}`;
         let ret = {};
-
+        let context;
         try {
+          context = await browser.createBrowserContext();
+          const page = await context.newPage();
           const oldConsoleResult = await getConsoleOutputFromJSExample(
             page,
             oldUrlForSlug,
@@ -140,10 +141,13 @@ async function collectResults(
             `Error processing ${oldUrlForSlug} and ${newUrlForSlug}:`,
             error
           );
+          ret = {
+            slug, locale, error
+          };
+        } finally {
+          await context?.close();
         }
 
-        // Close the context after the test completes
-        await context.close();
         return ret;
       })
     );
