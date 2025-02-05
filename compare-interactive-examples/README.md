@@ -22,4 +22,14 @@ After a successful fetch, a JSON file `compare-results.json` has been written. T
 
 - Run `npm run emit_diffs compare-results.json`
 
-This will output a JSON file containing differences worth looking at: `compare-differences.json`.
+This will output a JSON file containing differences worth looking at: `compare-diffs.json`.
+
+This file will probably contain some false positives: to fetch the console output for the slugs within it again:
+
+- Run `npm run fetch_results_from_diff`
+
+This will output another results file at `compare-results-from-diff.json`. We can then diff this raw file again:
+
+- Run `npm run emit_diffs compare-results-from-diff.json`
+
+The new diff will be in `compare-diffs.json`. This process can be repeated as many times as necessary, until there's a small enough number of false positives to manually check.

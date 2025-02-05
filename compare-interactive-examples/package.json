@@ -3,6 +3,7 @@
   "scripts": {
     "gather_slugs": "node gather_slugs.js",
     "fetch_results": "node fetch_results.js",
+    "fetch_results_from_diff": "node fetch_results_from_diff.js",
     "emit_diffs": "node emit_diffs.js"
   },
   "dependencies": {

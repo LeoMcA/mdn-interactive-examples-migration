@@ -33,12 +33,12 @@ export function translatedLocales() {
 export async function findSlugs(locale = "en-US") {
   const filesLookingInteresting = (
     await grepSystem(
-      "EmbedInteractiveExample",
+      "{{InteractiveExample",
       path.join(
         locale === "en-US"
           ? process.env.CONTENT_ROOT
           : process.env.TRANSLATED_CONTENT_ROOT,
-        locale,
+        locale.toLowerCase(),
         "web",
         "javascript"
       )
@@ -63,8 +63,25 @@ export async function diffInteractiveExamplesOutput(results) {
   for (const locale of Object.keys(results)) {
     for (const result of results[locale]) {
       const oldConsole = massageOldOutput(result.old.consoleResult);
-      const newConsole = result.new.consoleResult;
+      const newConsole = massageNewOutput(result.new.consoleResult);
       if (oldConsole !== newConsole) {
+        if (
+          oldConsole &&
+          newConsole &&
+          [
+            "Web/JavaScript/Reference/Global_Objects/Math/random",
+            "Web/JavaScript/Reference/Global_Objects/Promise/finally",
+          ].includes(result.slug)
+        ) {
+          // examples with random elements
+          console.log(`allowed error on ${result.locale} ${result.slug}:
+--- old ---
+${oldConsole}
+--- new ---
+${newConsole}
+---     ---`);
+          continue;
+        }
         diffs.push({
           slug: result.slug,
           locale: result.locale,
@@ -85,14 +102,19 @@ export async function diffInteractiveExamplesOutput(results) {
 function massageOldOutput(output) {
   // remove leading > from each line
   let ret = output.replace(/^> +/gm, "");
-  // handle quoting of single strings per line
-  const lines = ret.split("\n").map((line) => {
-    // if (line.startsWith('"') && line.endsWith('"')) {
-    //   return line.slice(1, -1);
-    // }
-    return line.trim();
-  });
-  ret = lines.join("\n");
+  // different error output
+  ret = ret.replace(/^[A-Za-z]*Error:/gm, "Error:");
+  return ret;
+}
+
+/**
+ *
+ * @param {string} output
+ * @returns {string}
+ */
+function massageNewOutput(output) {
+  // different error output
+  let ret = output.replace(/^[A-Za-z]*Error:/gm, "Error:");
   return ret;
 }
 
