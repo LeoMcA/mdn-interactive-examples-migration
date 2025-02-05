@@ -39,17 +39,20 @@ def replace_macros(content, md_file):
             with open(path, "r") as file:
                 other_args = match.group(2).lstrip(",").strip()
                 code = file.read()
+                suffix = match.group(3).strip()
                 return f"""{{{{InteractiveExample("{meta["title"]}"{f", {other_args}" if other_args else ""})}}}}
 
 ```js interactive-example
-{code}
-```"""
+{code.rstrip()}
+```{f'''
+
+{suffix}''' if suffix and "interactive-examples" not in suffix else ""}"""
 
         return match.group(0)  # keep the macro unchanged
 
     # Search for EmbedInteractiveExample macros and replace them
     updated_content = re.sub(
-        r'{{EmbedInteractiveExample\("([^"]+)"([^}]*)\)}}', replace_macro, content)
+        r'^{{EmbedInteractiveExample\("([^"]+)"([^}]*)\)}}(.*)$', replace_macro, content, 0, re.MULTILINE)
 
     if "/mdn/" in md_file and content != updated_content:
         print(f"Skipping file: {md_file}")
