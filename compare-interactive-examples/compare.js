@@ -9,29 +9,39 @@ const CONCURRENCY = 6;
 const HEADLESS = true;
 const BROWSER = "chrome";
 
-export async function compareInteractiveExamples(
-  oldUrl,
-  newUrl,
-  slugs
-){
+export async function compareInteractiveExamples(oldUrl, newUrl, slugs) {
   console.log(`Comparing ${oldUrl} and ${newUrl}`);
   const ret = {};
-  for (const locale of Object.keys(slugs)) { 
+  for (const locale of Object.keys(slugs)) {
     ret[locale] = await collectResults(oldUrl, newUrl, slugs[locale], locale);
   }
   return ret;
 }
 
 export function translatedLocales() {
-  return fs.readdirSync(process.env.TRANSLATED_CONTENT_ROOT)
-    .filter((entry) => !entry.startsWith(".") && fs.lstatSync(path.join(process.env.TRANSLATED_CONTENT_ROOT, entry)).isDirectory())
+  return fs
+    .readdirSync(process.env.TRANSLATED_CONTENT_ROOT)
+    .filter(
+      (entry) =>
+        !entry.startsWith(".") &&
+        fs
+          .lstatSync(path.join(process.env.TRANSLATED_CONTENT_ROOT, entry))
+          .isDirectory()
+    );
 }
 
-export async function findSlugs(locale="en-US") {
+export async function findSlugs(locale = "en-US") {
   const filesLookingInteresting = (
     await grepSystem(
       "EmbedInteractiveExample",
-      path.join(locale === "en-US" ? process.env.CONTENT_ROOT : process.env.TRANSLATED_CONTENT_ROOT, locale, "web", "javascript")
+      path.join(
+        locale === "en-US"
+          ? process.env.CONTENT_ROOT
+          : process.env.TRANSLATED_CONTENT_ROOT,
+        locale,
+        "web",
+        "javascript"
+      )
     )
   ).split("\n");
 
@@ -48,9 +58,9 @@ export async function findSlugs(locale="en-US") {
   return slugs;
 }
 
-export async function diffInteractiveExamplesOutput(results) { 
+export async function diffInteractiveExamplesOutput(results) {
   let diffs = [];
-  for (const locale of Object.keys(results)) { 
+  for (const locale of Object.keys(results)) {
     for (const result of results[locale]) {
       const oldConsole = massageOldOutput(result.old.consoleResult);
       const newConsole = result.new.consoleResult;
@@ -68,11 +78,11 @@ export async function diffInteractiveExamplesOutput(results) {
 }
 
 /**
- * 
- * @param {string} output 
+ *
+ * @param {string} output
  * @returns {string}
  */
-function massageOldOutput(output) { 
+function massageOldOutput(output) {
   // remove leading > from each line
   let ret = output.replace(/^> +/gm, "");
   // handle quoting of single strings per line
@@ -89,12 +99,7 @@ function massageOldOutput(output) {
 // This function collects the interactive javascript example console output from the
 // old and the new version of the examples found at URLs generated from the passed-in
 // slugs
-async function collectResults(
-  oldUrl,
-  newUrl,
-  slugs,
-  locale = "en-US"
-) {
+async function collectResults(oldUrl, newUrl, slugs, locale = "en-US") {
   const browser = await puppeteer.launch({
     browser: BROWSER,
     headless: HEADLESS,
@@ -131,9 +136,10 @@ async function collectResults(
             true
           );
           ret = {
-            slug, locale,
+            slug,
+            locale,
             old: { url: oldUrlForSlug, consoleResult: oldConsoleResult },
-            new: { url: newUrlForSlug, consoleResult: newConsoleResult }
+            new: { url: newUrlForSlug, consoleResult: newConsoleResult },
           };
           console.log(ret);
         } catch (error) {
@@ -142,7 +148,9 @@ async function collectResults(
             error
           );
           ret = {
-            slug, locale, error
+            slug,
+            locale,
+            error,
           };
         } finally {
           await context?.close();
@@ -166,7 +174,7 @@ inside a custom element (new version) or not.
 @param {Page} page - The puppeteer page object
 @param {string} url - The URL to load
 @param {boolean} queryCustomElement - Whether to query the custom element or not
-*/ 
+*/
 async function getConsoleOutputFromJSExample(
   page,
   url,
@@ -201,7 +209,7 @@ async function getConsoleOutputFromJSExample(
       await btn.click();
       const consoleElement = await iframe.waitForSelector("#console");
       let attempts = 0;
-      let consoleText = ""; 
+      let consoleText = "";
       do {
         await new Promise((resolve) => setTimeout(resolve, attempts * 1000));
         attempts += 1;
