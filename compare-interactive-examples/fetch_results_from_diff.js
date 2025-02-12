@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { compareInteractiveExamples } from "./compare.js";
+import { compareInteractiveJavascriptExamples } from "./compare.js";
 import fs from "node:fs";
 
 let f = "compare-diffs.json";
@@ -13,7 +13,7 @@ const slugs = diff.reduce((prev, curr) => {
     : (prev[curr.locale] = [curr.slug]);
   return prev;
 }, {});
-const results = await compareInteractiveExamples(
+const results = await compareInteractiveJavascriptExamples(
   process.env.OLD_URL,
   process.env.NEW_URL,
   slugs
