@@ -5,14 +5,18 @@
     "fetch_results": "node fetch_results.js",
     "fetch_visual_results": "node fetch_visual_results.js",
     "fetch_results_from_diff": "node fetch_results_from_diff.js",
-    "emit_diffs": "node emit_diffs.js"
+    "emit_diffs": "node emit_diffs.js",
+    "emit_html_results": "node emit_html_results.js"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
     "front-matter": "^4.0.2",
+    "gm": "^1.25.0",
     "image-size": "^1.2.0",
+    "looks-same": "^9.0.1",
     "pixelmatch": "^6.0.0",
     "pngjs": "^7.0.0",
-    "puppeteer": "^24.1.1"
+    "puppeteer": "^24.1.1",
+    "streamifier": "^0.1.1"
   }
 }
