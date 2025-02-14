@@ -4,34 +4,52 @@ import frontmatter from "front-matter";
 import puppeteer, { Page } from "puppeteer";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
-import { PNG } from 'pngjs';
-import gmModule from 'gm';
+import { PNG } from "pngjs";
+import gmModule from "gm";
 
 const CONCURRENCY = 6;
 const HEADLESS = true;
 const BROWSER = "chrome";
 
-export async function compareInteractiveJavascriptExamples(oldUrl, newUrl, slugs) {
+export async function compareInteractiveJavascriptExamples(
+  oldUrl,
+  newUrl,
+  slugs
+) {
   console.log(`Comparing ${oldUrl} and ${newUrl}`);
   const ret = {};
   for (const locale of Object.keys(slugs)) {
-    ret[locale] = await collectConsoleResults(oldUrl, newUrl, slugs[locale], locale);
+    ret[locale] = await collectConsoleResults(
+      oldUrl,
+      newUrl,
+      slugs[locale],
+      locale
+    );
   }
   return ret;
 }
 
-export async function compareInteractiveHTMLExamples(oldUrl, newUrl, slugs) { 
+export async function compareVisualExamples(oldUrl, newUrl, slugs) {
   const outDir = process.env.VISUAL_COMPARE_OUTPUT_FOLDER;
-  if (!outDir) { 
+  if (!outDir) {
     console.log("VISUAL_COMPARE_OUTPUT_FOLDER is not set");
-    process.exit(1)
+    process.exit(1);
   }
   fs.mkdirSync(outDir, { recursive: true });
   fs.mkdirSync(path.join(outDir, "img"), { recursive: true });
-  console.log(`Visually Comparing ${oldUrl} and ${newUrl}. Output is written to ${outDir}`);
+  console.log(
+    `Visually Comparing ${oldUrl} and ${newUrl}. Output is written to ${outDir}`
+  );
   const ret = {};
   for (const locale of Object.keys(slugs)) {
-    ret[locale] = await collectVisualResults(oldUrl, newUrl, slugs[locale], locale, outDir);
+    ret[locale] = await collectVisualResults(
+      oldUrl,
+      newUrl,
+      slugs[locale],
+      locale,
+      outDir,
+      true
+    );
   }
   return ret;
 }
@@ -48,17 +66,16 @@ export function translatedLocales() {
     );
 }
 
-export async function findSlugs(locale = "en-US") {
+export async function findSlugs(locale = "en-US", term, subpath) {
   const filesLookingInteresting = (
     await grepSystem(
-      "{{EmbedInteractiveExample",
+      term,
       path.join(
         locale === "en-US"
           ? process.env.CONTENT_ROOT
           : process.env.TRANSLATED_CONTENT_ROOT,
         locale.toLowerCase(),
-        "web",
-        "html"
+        subpath
       )
     )
   ).split("\n");
@@ -145,7 +162,14 @@ function massageNewOutput(output) {
  * @param {string} [locale="en-US"] - The locale used to locate the appropriate content.
  * @returns {Promise<any>} A promise that resolves with the collected visual results.
  */
-async function collectVisualResults(oldUrl, newUrl, slugs, locale = "en-US", outDir) { 
+async function collectVisualResults(
+  oldUrl,
+  newUrl,
+  slugs,
+  locale = "en-US",
+  outDir,
+  forceOld = false
+) {
   const browser = await puppeteer.launch({
     browser: BROWSER,
     headless: HEADLESS,
@@ -158,9 +182,6 @@ async function collectVisualResults(oldUrl, newUrl, slugs, locale = "en-US", out
   });
   const results = [];
 
-  // await new Promise(resolve => setTimeout(resolve, 60000)); // Add 1 second delay before closing browser
-
-  
   for (let i = 0; i < slugs.length; i += CONCURRENCY) {
     const batch = slugs.slice(i, i + CONCURRENCY);
     const batchResults = await Promise.all(
@@ -173,23 +194,29 @@ async function collectVisualResults(oldUrl, newUrl, slugs, locale = "en-US", out
           context = await browser.createBrowserContext();
           const page = await context.newPage();
           // use the old size as the base for the images to compare
-          const oldResult = await getVisualOutputFromInteractiveExample(
+          const oldResults = await getVisualOutputFromInteractiveExample(
             page,
             oldUrlForSlug,
             false
           );
-          const newResult = await getVisualOutputFromInteractiveExample(
+          const newResults = await getVisualOutputFromInteractiveExample(
             page,
             newUrlForSlug,
-            true
+            // true
+            !forceOld
           );
 
-          const comparison = await compareScreenshotsBuffers(oldResult, newResult, slug, outDir);
+          const comparisons = await compareScreenshotsBuffers(
+            oldResults,
+            newResults,
+            slug,
+            outDir
+          );
 
           ret = {
             slug,
             locale,
-            comparison,
+            comparisons,
             old: { url: oldUrlForSlug },
             new: { url: newUrlForSlug },
           };
@@ -214,114 +241,159 @@ async function collectVisualResults(oldUrl, newUrl, slugs, locale = "en-US", out
     results.push(...batchResults);
   }
 
-  await new Promise(resolve => setTimeout(resolve, 2000)); // Add 1 second delay before closing browser
+  await new Promise((resolve) => setTimeout(resolve, 2000)); // Add 1 second delay before closing browser
   await browser.close();
   return results;
+}
+
+/**
+ * Helper function to get the image dimensions using GraphicsMagick.
+ *
+ * @param {Buffer} buffer - The image buffer.
+ * @returns {Promise<{width: number, height: number}>} - The image size.
+ */
+function getImageSize(buffer) {
+  return new Promise((resolve, reject) => {
+    const tempFile = `/tmp/gm-size-${Math.random().toString(36).slice(5)}.png`;
+    fs.writeFileSync(tempFile, buffer);
+    gmModule(tempFile).size((err, size) => {
+      fs.unlinkSync(tempFile);
+      if (err) {
+        return reject(err);
+      }
+      // console.log("size", size);
+      resolve({ width: size.width, height: size.height });
+    });
+  });
+}
+
+/**
+ * Helper function to extend an image (via canvas resize) to a given width and height,
+ * filling the extra area with a white background.
+ *
+ * @param {Buffer} buffer - The original image buffer.
+ * @param {number} width - The target width.
+ * @param {number} height - The target height.
+ * @returns {Promise<Buffer>} - A promise that resolves with the new PNG image buffer.
+ */
+function convertToExtendedImage(buffer, width, height) {
+  return new Promise((resolve, reject) => {
+    const tempFile = `/tmp/gm-rs-${Math.random().toString(36).slice(5)}.png`;
+    fs.writeFileSync(tempFile, buffer);
+    gmModule(tempFile)
+      .background("white")
+      .gravity("NorthWest")
+      .extent(width, height)
+      .toBuffer("PNG", (err, extendedBuffer) => {
+        fs.unlinkSync(tempFile);
+        if (err) {
+          return reject(err);
+        }
+        resolve(extendedBuffer);
+      });
+  });
 }
 
 /**
  * Compares two screenshot images provided as buffers and returns the number of different pixels.
  * If differences are found, writes the diff image to /tmp/diff.png.
  *
- * @param {Buffer} buffer1 - Buffer of the first screenshot image.
- * @param {Buffer} buffer2 - Buffer of the second screenshot image.
+ * @param {Buffer[]} buffers1 - Buffer of the first screenshot image.
+ * @param {Buffer[]} buffers2 - Buffer of the second screenshot image.
  * @param {string} slug - the slug used to name the output images
- * @returns {Promise<{difference: number, oldPath: string, newPath: string, diffPath: string}>} - A promise that resolves to the number of differing pixels.
+ * @returns {Promise<{difference: number, oldPath: string, newPath: string, diffPath: string}[]>} - A promise that resolves to the number of differing pixels.
  */
-async function compareScreenshotsBuffers(buffer1, buffer2, slug, outDir) {
+async function compareScreenshotsBuffers(buffers1, buffers2, slug, outDir) {
+  if (buffers1.length !== buffers2.length) {
+    throw new Error("Both buffers must be of the same length.");
+  }
+
   try {
+    let results = [];
+    for (let i = 0; i < buffers1.length; i++) {
+      const buffer1 = buffers1[i];
+      const buffer2 = buffers2[i];
 
-      // Parse the PNG images from the buffers synchronously
-      const img1 = PNG.sync.read(Buffer.from(buffer1));
-      const img2 = PNG.sync.read(Buffer.from(buffer2));
+      // Get image dimensions using GraphicsMagick
+      const size1 = await getImageSize(buffer1);
+      const size2 = await getImageSize(buffer2);
+      const maxWidth = Math.max(size1.width, size2.width);
+      const maxHeight = Math.max(size1.height, size2.height);
 
-      // Calculate the maximum dimensions needed
-      const maxWidth = Math.max(img1.width, img2.width);
-      const maxHeight = Math.max(img1.height, img2.height);
-      // Create new PNGs with the maximum dimensions (white background)
-      const extendedImg1 = new PNG({ width: maxWidth, height: maxHeight });
-      const extendedImg2 = new PNG({ width: maxWidth, height: maxHeight });
-      // Fill with white pixels (255 for all RGBA channels)
-      for (let y = 0; y < maxHeight; y++) {
-        for (let x = 0; x < maxWidth; x++) {
-          const idx = (y * maxWidth + x) << 2;
-          extendedImg1.data[idx] = 255;     // R
-          extendedImg1.data[idx + 1] = 255; // G
-          extendedImg1.data[idx + 2] = 255; // B
-          extendedImg1.data[idx + 3] = 255; // A
-          
-          extendedImg2.data[idx] = 255;     // R
-          extendedImg2.data[idx + 1] = 255; // G
-          extendedImg2.data[idx + 2] = 255; // B
-          extendedImg2.data[idx + 3] = 255; // A
-        }
-      }      
+      // Create extended images (with white background and padded to max dimensions)
+      const extendedBuffer1 = await convertToExtendedImage(
+        buffer1,
+        maxWidth,
+        maxHeight
+      );
+      const extendedBuffer2 = await convertToExtendedImage(
+        buffer2,
+        maxWidth,
+        maxHeight
+      );
 
-      // Copy original images into the extended ones
-      for (let y = 0; y < img1.height; y++) {
-        for (let x = 0; x < img1.width; x++) {
-          const srcIdx = (y * img1.width + x) << 2;
-          const destIdx = (y * maxWidth + x) << 2;
-          extendedImg1.data[destIdx] = img1.data[srcIdx];
-          extendedImg1.data[destIdx + 1] = img1.data[srcIdx + 1];
-          extendedImg1.data[destIdx + 2] = img1.data[srcIdx + 2];
-          extendedImg1.data[destIdx + 3] = img1.data[srcIdx + 3];
-        }
-      }
+      // Write the extended images to disk
+      const basename = slug.replace(/[^a-zA-Z0-9]/g, "_");
+      const extendedOldImagePath = path.join(
+        outDir,
+        "img",
+        `${basename}-old-${i}.png`
+      );
+      const extendedNewImagePath = path.join(
+        outDir,
+        "img",
+        `${basename}-new-${i}.png`
+      );
+      fs.writeFileSync(extendedOldImagePath, extendedBuffer1);
+      fs.writeFileSync(extendedNewImagePath, extendedBuffer2);
 
-      for (let y = 0; y < img2.height; y++) {
-        for (let x = 0; x < img2.width; x++) {
-          const srcIdx = (y * img2.width + x) << 2;
-          const destIdx = (y * maxWidth + x) << 2;
-          extendedImg2.data[destIdx] = img2.data[srcIdx];
-          extendedImg2.data[destIdx + 1] = img2.data[srcIdx + 1];
-          extendedImg2.data[destIdx + 2] = img2.data[srcIdx + 2];
-          extendedImg2.data[destIdx + 3] = img2.data[srcIdx + 3];
-        }
-      }
+      const diffPath = path.join(outDir, "img", `${basename}-diff-${i}.png`);
 
-      // Write the extended images
-      const basename = slug.replace(/[^a-zA-Z0-9]/g, '_');
-      const extendedOldImagePath = path.join(outDir, "img", `${basename}-old.png`);
-      const extendedNewImagePath = path.join(outDir, "img", `${basename}-new.png`);
-      const extendedOldBuffer = PNG.sync.write(extendedImg1);
-      const extendedNewBuffer = PNG.sync.write(extendedImg2);
-      fs.writeFileSync(extendedOldImagePath, extendedOldBuffer);
-      fs.writeFileSync(extendedNewImagePath, extendedNewBuffer);
-      
-      
-      const diffPath = path.join(outDir, "img", `${basename}-diff.png`);
-
-      // compare using graphicsmagick
-      return new Promise((resolve, reject) => {
+      // Compare the extended images
+      const result = await new Promise((resolve, reject) => {
         gmModule.compare(
           extendedOldImagePath,
           extendedNewImagePath,
-          { file: diffPath, metric: 'MSE', "highlight-style": "XOR" },
+          { file: diffPath, metric: "MSE", "highlight-style": "Assign" },
           (err, _equal, difference) => {
             if (err) {
-              if (typeof err === 'string') {
+              if (typeof err === "string") {
                 reject(new Error(err));
               } else {
                 reject(err);
               }
             } else {
-              resolve(
-                {
-                  difference,
-                  diffPath,
-                  oldPath: path.relative(outDir, extendedOldImagePath),
-                  newPath: path.relative(outDir, extendedNewImagePath)
-                });
+              resolve({
+                difference,
+                diffPath,
+                oldPath: path.relative(outDir, extendedOldImagePath),
+                newPath: path.relative(outDir, extendedNewImagePath),
+              });
             }
           }
         );
       });
-    
-    } catch (error) {
-      console.log("error in compareScreenShotBuffers", error)
-      throw(error)
+
+      // Rewrite the diff image by subtracting the first image pixels from it:
+      // await new Promise((resolve, reject) => {
+      //   gmModule(diffPath)
+      //     .composite(extendedOldImagePath)
+      //     .compose("Difference")
+      //     .write(diffPath, (err) => {
+      //       if (err) {
+      //         reject(err);
+      //       } else {
+      //         resolve();
+      //       }
+      //     });
+      // });
+      results.push(result);
     }
+    return results;
+  } catch (error) {
+    console.log("error in compareScreenShotBuffers", error);
+    throw error;
+  }
 }
 
 // This function collects the interactive javascript example console output from the
@@ -453,62 +525,100 @@ async function getConsoleOutputFromJSExample(
 }
 
 /**
- * Get a screenshot from an interactive example.
+ * Get screenshots from an interactive example. Some example have multiple variants (CSS) and
+ * need to take multiple screenshots to cover basic functionality.
  *
  * @param {Page} page - The page object representing the interactive example. This could be a browser or testing framework page instance.
  * @param {string} url - The URL of the interactive example to be processed.
  * @param {boolean} [queryCustomElement=false] - If true, the function will query for a specific custom element on the page.
  * @param {{width: number, height: number} | null} size - If set, clip the screenshot to this box
- * @returns {Promise<UInt8Array | null>} A promise that resolves with the png data and the size of the screenshot
+ * @returns {Promise<[UInt8Array]>} A promise that resolves with the png data and the size of the screenshot
  */
 async function getVisualOutputFromInteractiveExample(
   page,
   url,
-  queryCustomElement = false,
-) { 
-   try {
+  queryCustomElement = false
+) {
+  try {
     let screenshot;
-    let interactiveExample;
+    let screenshotTarget;
+    let isCSSChoice = false;
     await page.goto(url, { timeout: 10000 });
-    // await page.evaluate(() => {
-    //   const element = document.querySelector("#try_it");
-    //   element.scrollIntoView({block: "start", inline: "center", behavior: "instant"})
-    // });
     if (queryCustomElement) {
-      // custom element version
-      // const targetElement = await page.$("body");
-      // await targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      interactiveExample = await page.waitForSelector("interactive-example");
-      const playController = await page.waitForSelector("interactive-example >>> play-controller", { timeout: 5000 });
+      // New custom element version
+      const ie = await page.waitForSelector("interactive-example");
+      const playController = await page.waitForSelector(
+        "interactive-example >>> play-controller",
+        { timeout: 5000 }
+      );
       const playRunner = await playController.waitForSelector("play-runner");
       const outputIframe = await playRunner.waitForSelector(">>> iframe");
       const frame = await outputIframe.contentFrame();
       const body = await frame.waitForSelector("body");
-      interactiveExample = outputIframe;
+      screenshotTarget = outputIframe;
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      screenshot = await screenshotTarget.screenshot({
+        path: `/tmp/screen-${queryCustomElement}.png`,
+      });
+      return [screenshot];
     } else {
-      // old iframe version
-      // const targetElement = await page.$("body");
-      // await targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      interactiveExample = await page.waitForSelector("iframe.interactive", { timeout: 5000 });
-      const frame = await interactiveExample.contentFrame();
+      // Old iframe version
+      const iframe = await page.waitForSelector("iframe.interactive", {
+        timeout: 5000,
+      });
+      const frame = await iframe.contentFrame();
       const body = await frame.waitForSelector("body");
-      const inner = await frame.waitForSelector("#output-iframe");
-      interactiveExample = inner;
+
+      // Now, we have either the tabbed interface or the css choices interface
+      // if we can find a section#example-choice-list element, we are in CSS choice land,
+      // otherwise we have the tabbed interface
+      try {
+        const choiceList = await frame.waitForSelector(
+          "section#example-choice-list",
+          { timeout: 100 }
+        );
+        const choices = await choiceList.$$(".example-choice");
+        const output = await frame.waitForSelector("div#output", {
+          timeout: 100,
+        });
+        screenshotTarget = output;
+        // we have to do multiple screenshots for this
+        let ret = [];
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        for (const [index, choice] of choices.entries()) {
+          await choice.hover();
+          await choice.click();
+          // we have a 0.3 transition on the css, so wait a bit
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          screenshot = await screenshotTarget.screenshot({});
+          ret.push(screenshot);
+        }
+        await output.hover();
+        return ret;
+      } catch (error) {
+        // console.log("tabbed version", error);
+        // tabbed
+        const inner = await frame.waitForSelector("#output-iframe");
+        screenshotTarget = inner;
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        screenshot = await screenshotTarget.screenshot({
+          path: `/tmp/screen-${queryCustomElement}.png`,
+        });
+        return [screenshot];
+      }
     }
-    await new Promise(resolve => setTimeout(resolve, 500));
-    screenshot = await interactiveExample.screenshot({ path: `/tmp/screen-${queryCustomElement}.png` });
-    return screenshot;
   } catch (error) {
     console.log(`error while processing ${url}: ${error}`);
-    return null
+    return [];
   }
 }
 
 const execAsync = promisify(exec);
 async function grepSystem(searchTerm, directory) {
   try {
+    // suppress exit status 1 of grep if there aren't any matches.
     const { stdout } = await execAsync(
-      `grep -irl "${searchTerm}" "${directory}"`
+      `grep -irl "${searchTerm}" "${directory}"; true`
     );
     return stdout;
   } catch (error) {
