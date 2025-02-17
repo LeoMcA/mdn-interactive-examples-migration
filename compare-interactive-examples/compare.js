@@ -564,7 +564,7 @@ async function getVisualOutputFromInteractiveExample(
     } else {
       // Old iframe version
       const iframe = await page.waitForSelector("iframe.interactive", {
-        timeout: 5000,
+        timeout: 10000,
       });
       const frame = await iframe.contentFrame();
       const body = await frame.waitForSelector("body");
@@ -588,8 +588,8 @@ async function getVisualOutputFromInteractiveExample(
         for (const [index, choice] of choices.entries()) {
           await choice.hover();
           await choice.click();
-          // we have a 0.3 transition on the css, so wait a bit
-          await new Promise((resolve) => setTimeout(resolve, 500));
+          // we have a 0.3 .. 1.0 transition on the css, so wait a bit
+          await new Promise((resolve) => setTimeout(resolve, 1200));
           screenshot = await screenshotTarget.screenshot({});
           ret.push(screenshot);
         }
