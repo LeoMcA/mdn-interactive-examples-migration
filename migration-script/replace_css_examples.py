@@ -83,17 +83,17 @@ for css_choice in css_choices
             suffix = match.group(3).strip()
             return f"""{{{{InteractiveExample("{html.escape(meta["title"], quote=True)}"{f", {other_args}" if other_args else ""})}}}}
 
-```html interactive-example-hidden
+{css_choice_fences}{f'''
+
+```html interactive-example
 {html_example_src}
 ```
 
-{css_choice_fences}{f'''
-
-```css interactive-example-hidden
+```css interactive-example
 {css_example_src.rstrip()}
 ```''' if css_example_src else ""}{f'''
 
-```js interactive-example-hidden
+```js interactive-example
 {js_example_src.rstrip()}
 ```''' if js_example_src else ""}{f'''
 
