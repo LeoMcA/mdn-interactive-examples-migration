@@ -5,6 +5,7 @@ import glob
 import json
 import os
 import html
+from bs4 import BeautifulSoup
 
 # Directory to search for all index.md files
 input_files_pattern = "./files/**/index.md"
@@ -50,6 +51,9 @@ def replace_macros(content, md_file):
 
             with open(example_code_path, "r") as file:
                 example_code = file.read()
+                soup = BeautifulSoup(example_code, 'html.parser')
+                css_choices = [code.get_text(strip=True) for code in soup.find_all('code', class_='language-css')]
+                html_example_src = soup.find('section', id='default-example').decode_contents().strip()
 
             if css_example_src_path:
                 with open(css_example_src_path, "r") as file:
@@ -67,19 +71,29 @@ def replace_macros(content, md_file):
             else:
                 js_example_src = None
 
+
+            css_choice_fences = "\n\n".join(
+                f"""```css interactive-example-choice
+{css_choice.replace("&amp;shy;", "&shy;").rstrip()}
+```"""
+for css_choice in css_choices
+            )
+
             other_args = match.group(2).lstrip(",").strip()
             suffix = match.group(3).strip()
             return f"""{{{{InteractiveExample("{html.escape(meta["title"], quote=True)}"{f", {other_args}" if other_args else ""})}}}}
 
-```html interactive-example-choice
-{example_code.rstrip()}
-```{f'''
+```html interactive-example-hidden
+{html_example_src}
+```
 
-```css interactive-example-choice
+{css_choice_fences}{f'''
+
+```css interactive-example-hidden
 {css_example_src.rstrip()}
 ```''' if css_example_src else ""}{f'''
 
-```js interactive-example-choice
+```js interactive-example-hidden
 {js_example_src.rstrip()}
 ```''' if js_example_src else ""}{f'''
 
