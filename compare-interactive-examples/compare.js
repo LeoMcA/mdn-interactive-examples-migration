@@ -175,6 +175,12 @@ async function collectVisualResults(
   const browser = await puppeteer.launch({
     browser: BROWSER,
     headless: HEADLESS,
+    args: [
+      "--disable-features=site-per-process",
+      "--disable-web-security",
+      "--disable-features=IsolateOrigins",
+      " --disable-site-isolation-trials",
+    ],
     defaultViewport: {
       width: 1500,
       height: 3000,
@@ -355,7 +361,7 @@ async function compareScreenshotsBuffers(buffers1, buffers2, slug, outDir) {
         gmModule.compare(
           extendedOldImagePath,
           extendedNewImagePath,
-          { file: diffPath, metric: "MSE", "highlight-style": "Assign" },
+          { file: diffPath, metric: "MSE", highlightStyle: "Assign" },
           (err, _equal, difference) => {
             if (err) {
               if (typeof err === "string") {
@@ -366,7 +372,7 @@ async function compareScreenshotsBuffers(buffers1, buffers2, slug, outDir) {
             } else {
               resolve({
                 difference,
-                diffPath,
+                diffPath: path.relative(outDir, diffPath),
                 oldPath: path.relative(outDir, extendedOldImagePath),
                 newPath: path.relative(outDir, extendedNewImagePath),
               });
@@ -544,7 +550,7 @@ async function getVisualOutputFromInteractiveExample(
     let screenshot;
     let screenshotTarget;
     let isCSSChoice = false;
-    await page.goto(url, { timeout: 10000 });
+    await page.goto(url, { timeout: 10000, waitUntil: "networkidle2" });
     if (queryCustomElement) {
       // New custom element version
       const ie = await page.waitForSelector("interactive-example");
@@ -600,7 +606,17 @@ async function getVisualOutputFromInteractiveExample(
         // console.log("tabbed version", error);
         // tabbed
         const inner = await frame.waitForSelector("#output-iframe");
+        // fudge to align prod:
+        await frame.evaluate(() => {
+          document.querySelector("#output-iframe").style.borderLeft =
+            "1px solid transparent";
+        });
         screenshotTarget = inner;
+        const innerFrame = await inner.contentFrame();
+        await innerFrame.waitForSelector("#html-output");
+        await innerFrame.waitForFunction(
+          () => document.readyState === "complete"
+        );
         await new Promise((resolve) => setTimeout(resolve, 500));
         screenshot = await screenshotTarget.screenshot({
           path: `/tmp/screen-${queryCustomElement}.png`,

@@ -55,18 +55,18 @@ const html = `
             (comparison, i) => `
           <div class="images">
             <div>
-              <h4><small>Example #${i + 1}</small> <a href="${result.old.url}">
+              <h4><small>Example #${i + 1}</small> <a target="_blank" href="${result.old.url}">
                 Old version
               </a></h4>
-              <img src="${comparison.oldPath}" alt="Old version">
+              <img src="${comparison.oldPath}" loading="lazy" alt="Old version">
             </div>
             <div>
-              <h4><a href="${result.new.url}">New version</a></h4>
-              <img src="${comparison.newPath}" alt="New version">
+              <h4><a target="_blank" href="${result.new.url}">New version</a></h4>
+              <img src="${comparison.newPath}" loading="lazy" alt="New version">
             </div>
             <div>
               <h4>Difference: ${comparison.difference}</h4>
-              <img src="${comparison.diffPath}" alt="Difference">
+              <img src="${comparison.diffPath}" loading="lazy" alt="Difference">
             </div>
           </div>`
           )
