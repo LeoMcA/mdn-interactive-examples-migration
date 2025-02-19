@@ -8,7 +8,7 @@ import html
 
 # Directory to search for all index.md files
 input_files_pattern = "./files/**/index.md"
-meta_files_pattern = "../interactive-examples/live-examples/html-examples/**/meta.json"
+meta_files_pattern = "../interactive-examples/live-examples/css-examples/**/meta.json"
 
 interactive_examples_folder = "../interactive-examples"
 
@@ -27,7 +27,7 @@ for meta_file in meta_files:
 def replace_macros(content, md_file):
     def replace_macro(match):
         built_path = match.group(1)
-        if path_match := re.search(r"^pages\/tabbed\/(.*)$", built_path):
+        if path_match := re.search(r"^pages\/css\/(.*)$", built_path):
             filename = path_match.group(1)
             try:
                 meta = meta_map[filename]
@@ -50,11 +50,6 @@ def replace_macros(content, md_file):
 
             with open(example_code_path, "r") as file:
                 example_code = file.read()
-                if meta["title"] == "HTML Demo: <object>":
-                    example_code = example_code.replace(
-                        'type="application/pdf" data="/media/examples/In-CC0.pdf"', 'type="video/mp4" data="/shared-assets/videos/flower.mp4"')
-                if "media/" in example_code or "interactive-examples.mdn.mozilla.net" in example_code:
-                    example_code = map_media(example_code)
 
             if css_example_src_path:
                 with open(css_example_src_path, "r") as file:
@@ -76,15 +71,15 @@ def replace_macros(content, md_file):
             suffix = match.group(3).strip()
             return f"""{{{{InteractiveExample("{html.escape(meta["title"], quote=True)}"{f", {other_args}" if other_args else ""})}}}}
 
-```html interactive-example
-{example_code.replace("&amp;shy;", "&shy;").rstrip()}
+```html interactive-example-choice
+{example_code.rstrip()}
 ```{f'''
 
-```css interactive-example
+```css interactive-example-choice
 {css_example_src.rstrip()}
 ```''' if css_example_src else ""}{f'''
 
-```js interactive-example
+```js interactive-example-choice
 {js_example_src.rstrip()}
 ```''' if js_example_src else ""}{f'''
 
