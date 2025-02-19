@@ -55,6 +55,9 @@ export async function compareVisualExamples(oldUrl, newUrl, slugs) {
 }
 
 export function translatedLocales() {
+  if (!process.env.TRANSLATED_CONTENT_ROOT) {
+    return [];
+  }
   return fs
     .readdirSync(process.env.TRANSLATED_CONTENT_ROOT)
     .filter(
@@ -167,8 +170,7 @@ async function collectVisualResults(
   newUrl,
   slugs,
   locale = "en-US",
-  outDir,
-  forceOld = false
+  outDir
 ) {
   const browser = await puppeteer.launch({
     browser: BROWSER,
@@ -202,8 +204,7 @@ async function collectVisualResults(
           const newResults = await getVisualOutputFromInteractiveExample(
             page,
             newUrlForSlug,
-            // true
-            !forceOld
+            true
           );
 
           const comparisons = await compareScreenshotsBuffers(
