@@ -53,7 +53,9 @@ def replace_macros(content, md_file):
                 example_code = file.read()
                 soup = BeautifulSoup(example_code, 'html.parser')
                 css_choices = [code.get_text(strip=True) for code in soup.find_all('code', class_='language-css')]
+                css_choices = [map_media(choice) for choice in css_choices]
                 html_example_src = soup.find('section', id='default-example').decode_contents().strip()
+                html_example_src = map_media(html_example_src)
 
             if css_example_src_path:
                 with open(css_example_src_path, "r") as file:
