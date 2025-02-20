@@ -55,8 +55,7 @@ def replace_macros(content, md_file):
                 if meta["title"] == "HTML Demo: <object>":
                     example_code = example_code.replace(
                         'type="application/pdf" data="/media/examples/In-CC0.pdf"', 'type="video/mp4" data="/shared-assets/videos/flower.mp4"')
-                if "media/" in example_code:
-                    example_code = map_media(example_code)
+                example_code = map_media(example_code)
 
             if css_example_src_path:
                 with open(css_example_src_path, "r") as file:
@@ -69,8 +68,7 @@ def replace_macros(content, md_file):
             if js_example_src_path:
                 with open(js_example_src_path, "r") as file:
                     js_example_src = file.read()
-                    if "media/" in js_example_src:
-                        js_example_src = map_media(js_example_src)
+                    js_example_src = map_media(js_example_src)
             else:
                 js_example_src = None
 

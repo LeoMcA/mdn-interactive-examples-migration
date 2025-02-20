@@ -47,6 +47,9 @@ media_map = {
 }
 
 def map_media(code):
+    if "media/" not in code:
+        return code
+
     def replace(match):
         old_media = match.group(1)
         old_media_normalized = old_media.removeprefix("../..")
