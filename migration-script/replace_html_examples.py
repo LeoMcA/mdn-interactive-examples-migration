@@ -6,6 +6,8 @@ import json
 import os
 import html
 
+from lib import map_media
+
 # Directory to search for all index.md files
 input_files_pattern = "./files/**/index.md"
 meta_files_pattern = "../interactive-examples/live-examples/html-examples/**/meta.json"
@@ -101,39 +103,6 @@ def replace_macros(content, md_file):
         return content
 
     return updated_content
-
-
-def map_media(code):
-    def replace(match):
-        mapping = {
-            "/media/cc0-videos/flower.webm": "/shared-assets/videos/flower.webm",
-            "/media/cc0-videos/flower.mp4": "/shared-assets/videos/flower.mp4",
-            "/media/examples/mdn-info.png": "/shared-assets/images/examples/mdn-info.png",
-            "/media/examples/leopard.jpg": "/shared-assets/images/examples/leopard.jpg",
-            "/media/examples/mdn-info2.png": "/shared-assets/images/examples/mdn-info2.png",
-            "/media/examples/mdn-info2.png": "/shared-assets/images/examples/mdn-info2.png",
-            "/media/examples/In-CC0.pdf": "/shared-assets/misc/In-CC0.pdf",
-            "/media/examples/login-button.png": "/shared-assets/images/examples/login-button.png",
-            "/media/cc0-images/elephant-660-480.jpg": "/shared-assets/images/examples/elephant.jpg",
-            "/media/cc0-audio/t-rex-roar.mp3": "/shared-assets/audio/t-rex-roar.mp3",
-            "/media/cc0-images/grapefruit-slice-332-332.jpg": "/shared-assets/images/examples/grapefruit-slice.jpg",
-            "/media/cc0-videos/friday.mp4": "/shared-assets/videos/friday.mp4",
-            "/media/examples/friday.vtt": "/shared-assets/misc/friday.vtt",
-            "/media/examples/link-element-example.css": "/shared-assets/misc/link-element-example.css",
-            "/media/examples/rain.svg": "/shared-assets/images/examples/rain.svg",
-            "/media/cc0-images/surfer-240-200.jpg": "/shared-assets/images/examples/surfer.jpg",
-            "/media/cc0-images/painted-hand-298-332.jpg": "/shared-assets/images/examples/painted-hand.jpg",
-            "/media/examples/puppy-header-logo.jpg": "/shared-assets/images/examples/puppy-header.jpg",
-        }
-        old_media = match.group(1)
-        if new_media := mapping.get(old_media):
-            return match.group(0).replace(old_media, new_media)
-
-        print(old_media)
-        return match.group(0)
-
-    return re.sub(r"""(\/media\/\S*)["']""", replace, code)
-
 
 # Get all index.md files recursively
 md_files = glob.glob(input_files_pattern, recursive=True)
