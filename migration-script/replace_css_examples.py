@@ -159,13 +159,15 @@ def map_media(code):
             "/media/fonts/LeagueMono-VF.ttf": "/shared-assets/fonts/LeagueMono-VF.ttf",
         }
         old_media = match.group(1)
-        if new_media := mapping.get(old_media):
+        old_media_normalized = old_media.removeprefix("../..")
+        
+        if new_media := mapping.get(old_media_normalized):
             return match.group(0).replace(old_media, new_media)
 
         print(old_media)
         return match.group(0)
 
-    return re.sub(r"""(\/media\/\S*)["']""", replace, code)
+    return re.sub(r"""([./]*\/media\/\S*)["']""", replace, code)
 
 
 # Get all index.md files recursively
