@@ -41,6 +41,9 @@ media_map = {
     "/media/fonts/FiraSans-Italic.woff2": "/shared-assets/fonts/FiraSans-Italic.woff2",
     "/media/fonts/FiraSans-Regular.woff2": "/shared-assets/fonts/FiraSans-Regular.woff2",
     "/media/fonts/LeagueMono-VF.ttf": "/shared-assets/fonts/LeagueMono-VF.ttf",
+    # TODO: Add to shared-assets repo.
+    "/media/warning.svg": "/shared-assets/images/examples/warning.svg",
+    "/media/examples/fire.png": "/shared-assets/images/examples/fire.png",
 }
 
 def map_media(code):
