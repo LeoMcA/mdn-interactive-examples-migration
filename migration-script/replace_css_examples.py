@@ -70,7 +70,7 @@ def replace_macros(content, md_file):
             if js_example_src_path:
                 with open(js_example_src_path, "r") as file:
                     js_example_src = file.read()
-                    if "media/" in js_example_src or "interactive-examples.mdn.mozilla.net" in js_example_src:
+                    if "media/" in js_example_src:
                         js_example_src = map_media(js_example_src)
             else:
                 js_example_src = None
