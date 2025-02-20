@@ -76,7 +76,7 @@ def replace_macros(content, md_file):
 
             css_choice_fences = "\n\n".join(
                 f"""```css interactive-example-choice
-{css_choice.replace("&amp;shy;", "&shy;").rstrip()}
+{css_choice.rstrip()}
 ```"""
 for css_choice in css_choices
             )
