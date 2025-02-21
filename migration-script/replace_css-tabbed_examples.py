@@ -8,6 +8,14 @@ import html
 
 from lib import map_media
 
+blocklist = [
+    "pseudo-class-host.html",
+    "pseudo-class-host-context.html",
+    "pseudo-class-host_function.html",
+    "pseudo-element-slotted.html",
+    "at-rule-namespace.html",
+]
+
 # Directory to search for all index.md files
 input_files_pattern = "./files/**/index.md"
 meta_files_pattern = "../interactive-examples/live-examples/**/meta.json"
@@ -21,7 +29,7 @@ for meta_file in meta_files:
     with open(meta_file, "r") as file:
         data = json.load(file)
         for value in data["pages"].values():
-            if value["type"] == 'tabbed':
+            if value["type"] == 'tabbed' and value["fileName"] not in blocklist:
                 meta_map[value["fileName"]] = value
 
 # Replace the macro with actual code blocks
