@@ -2,12 +2,22 @@ import "dotenv/config";
 import { compareVisualExamples } from "./compare.js";
 import fs from "node:fs";
 
-let f = "compare-slugs.json";
+let locale = "all";
 if (process.argv[2]) {
-  f = process.argv[2];
+  locale = process.argv[2];
 }
 
-const slugs = JSON.parse(fs.readFileSync(f));
+let f = "compare-slugs.json";
+if (process.argv[3]) {
+  f = process.argv[3];
+}
+
+let slugs = JSON.parse(fs.readFileSync(f));
+if (locale !== "all") {
+  slugs = {
+    [locale]: slugs[locale],
+  };
+}
 const results = await compareVisualExamples(
   process.env.OLD_URL,
   process.env.NEW_URL,

@@ -6,7 +6,7 @@ const locales = ["en-US"];
 locales.push(...translatedLocales());
 const slugs = {};
 for (const locale of locales) {
-  slugs[locale] = await findSlugs(locale, "{{EmbedInteractiveExample", "web/html");
+  slugs[locale] = await findSlugs(locale, '{{InteractiveExample(\\"HTML');
 }
 const count = Object.keys(slugs).reduce((ct, locale) => { 
   ct += slugs[locale].length;

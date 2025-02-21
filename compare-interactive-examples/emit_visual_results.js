@@ -1,6 +1,6 @@
 import "dotenv/config";
-import { diffInteractiveExamplesOutput } from "./compare.js";
 import fs from "node:fs";
+import path from "node:path";
 
 let f = "compare-results.json";
 if (process.argv[2]) {
@@ -10,16 +10,17 @@ const results = JSON.parse(fs.readFileSync(f));
 
 const outDir = process.env.VISUAL_COMPARE_OUTPUT_FOLDER;
 
-const sortedResults = Object.values(results)
-  .flat()
-  .filter((result) => result.comparisons)
-  .sort((a, b) => {
-    const maxDiffA = Math.max(...a.comparisons.map((c) => c.difference || 0));
-    const maxDiffB = Math.max(...b.comparisons.map((c) => c.difference || 0));
-    return maxDiffB - maxDiffA;
-  });
+for (const [locale, localeResults] of Object.entries(results)) {
+  const sortedResults = Object.values(localeResults)
+    .flat()
+    .filter((result) => result.comparisons)
+    .sort((a, b) => {
+      const maxDiffA = Math.max(...a.comparisons.map((c) => c.difference || 0));
+      const maxDiffB = Math.max(...b.comparisons.map((c) => c.difference || 0));
+      return maxDiffB - maxDiffA;
+    });
 
-const html = `
+  const html = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -78,4 +79,5 @@ const html = `
 </html>
 `;
 
-fs.writeFileSync(`${outDir}/results.html`, html);
+  fs.writeFileSync(path.join(outDir, locale, "results.html"), html);
+}

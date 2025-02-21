@@ -35,19 +35,18 @@ export async function compareVisualExamples(oldUrl, newUrl, slugs) {
     console.log("VISUAL_COMPARE_OUTPUT_FOLDER is not set");
     process.exit(1);
   }
-  fs.mkdirSync(outDir, { recursive: true });
-  fs.mkdirSync(path.join(outDir, "img"), { recursive: true });
   console.log(
     `Visually Comparing ${oldUrl} and ${newUrl}. Output is written to ${outDir}`
   );
   const ret = {};
   for (const locale of Object.keys(slugs)) {
+    fs.mkdirSync(path.join(outDir, locale, "img"), { recursive: true });
     ret[locale] = await collectVisualResults(
       oldUrl,
       newUrl,
       slugs[locale],
       locale,
-      outDir,
+      path.join(outDir, locale),
       true
     );
   }
@@ -69,7 +68,7 @@ export function translatedLocales() {
     );
 }
 
-export async function findSlugs(locale = "en-US", term, subpath) {
+export async function findSlugs(locale = "en-US", term) {
   const filesLookingInteresting = (
     await grepSystem(
       term,
@@ -77,8 +76,7 @@ export async function findSlugs(locale = "en-US", term, subpath) {
         locale === "en-US"
           ? process.env.CONTENT_ROOT
           : process.env.TRANSLATED_CONTENT_ROOT,
-        locale.toLowerCase(),
-        subpath
+        locale.toLowerCase()
       )
     )
   ).split("\n");
@@ -183,7 +181,7 @@ async function collectVisualResults(
     ],
     defaultViewport: {
       width: 1500,
-      height: 3000,
+      height: 300000,
       isMobile: false,
       deviceScaleFactor: 1,
     },
@@ -229,6 +227,7 @@ async function collectVisualResults(
           };
           console.log(ret);
         } catch (error) {
+          // throw error;
           console.error(
             `Error processing ${oldUrlForSlug} and ${newUrlForSlug}:`,
             error
