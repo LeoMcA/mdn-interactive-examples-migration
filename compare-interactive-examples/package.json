@@ -1,6 +1,9 @@
 {
   "type": "module",
   "scripts": {
+    "gather_wat_slugs": "node gather_wat_slugs.js",
+    "fetch_wat_results": "node fetch_wat_results.js",
+    "emit_wat_diffs": "node emit_js_console_diffs.js",
     "gather_js_console_slugs": "node gather_js_console_slugs.js",
     "fetch_js_console_results": "node fetch_js_console_results.js",
     "fetch_js_console_results_from_diff": "node fetch_js_console_results_from_diff.js",

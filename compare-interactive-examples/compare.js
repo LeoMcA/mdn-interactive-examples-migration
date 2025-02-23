@@ -1,7 +1,7 @@
 import path from "node:path";
 import fs from "node:fs";
 import frontmatter from "front-matter";
-import puppeteer, { Page } from "puppeteer";
+import puppeteer, { Page, TimeoutError } from "puppeteer";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { PNG } from "pngjs";
@@ -379,20 +379,6 @@ async function compareScreenshotsBuffers(buffers1, buffers2, slug, outDir) {
           }
         );
       });
-
-      // Rewrite the diff image by subtracting the first image pixels from it:
-      // await new Promise((resolve, reject) => {
-      //   gmModule(diffPath)
-      //     .composite(extendedOldImagePath)
-      //     .compose("Difference")
-      //     .write(diffPath, (err) => {
-      //       if (err) {
-      //         reject(err);
-      //       } else {
-      //         resolve();
-      //       }
-      //     });
-      // });
       results.push(result);
     }
     return results;
@@ -500,7 +486,15 @@ async function getConsoleOutputFromJSExample(
       const cons = await interactiveExample.waitForSelector(">>> #console");
       const consUl = await cons.waitForSelector(">>> ul");
       // wait for at least one li element to show up
-      await consUl.waitForSelector("li");
+      try {
+        await consUl.waitForSelector("li", { timeout: 2000 });
+      } catch (e) {
+        // Sometimes the result is an empty string (ex: WAT/nop) and we do not get any <li> elements.
+        // Return an empty string in that case.
+        if (e instanceof TimeoutError) {
+          return "";
+        }
+      }
       const output = (
         await consUl.$$eval("li", (lis) =>
           lis.map((li) => li.textContent?.trim() || "")
@@ -512,9 +506,19 @@ async function getConsoleOutputFromJSExample(
         await page.waitForSelector("iframe.interactive")
       ).contentFrame();
       const btn = await iframe.waitForSelector("#execute", { timeout: 10000 });
-      await btn.click();
-      const consoleElement = await iframe.waitForSelector("#console");
       let attempts = 0;
+      do {
+        await new Promise((resolve) => setTimeout(resolve, attempts * 100));
+        attempts += 1;
+        try {
+          await btn.click();
+          break;
+        } catch (e) {
+          continue;
+        }
+      } while (attempts < 6);
+      const consoleElement = await iframe.waitForSelector("#console");
+      attempts = 0;
       let consoleText = "";
       do {
         await new Promise((resolve) => setTimeout(resolve, attempts * 1000));
