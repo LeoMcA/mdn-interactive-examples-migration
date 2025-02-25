@@ -54,9 +54,11 @@ def replace_macros(content, md_file):
             with open(example_code_path, "r") as file:
                 example_code = file.read()
                 soup = BeautifulSoup(example_code, 'html.parser')
-                css_choices = [code.get_text(strip=True) for code in soup.find_all('code', class_='language-css')]
+                css_choices = [code.get_text(strip=True) for code in soup.find_all(
+                    'code', class_='language-css')]
                 css_choices = [map_media(choice) for choice in css_choices]
-                html_example_src = soup.find('section', id='default-example').decode_contents().strip()
+                html_example_src = soup.find(
+                    id='output').decode_contents().strip()
                 html_example_src = map_media(html_example_src)
 
             if css_example_src_path:
@@ -64,6 +66,8 @@ def replace_macros(content, md_file):
                     css_example_src = file.read()
                     if "url(" in css_example_src:
                         css_example_src = map_media(css_example_src)
+                    css_example_src = css_example_src.replace("#output {", "body {").replace(
+                        ".output {", "body {").replace("#output ", "").replace(".output ", "")
             else:
                 css_example_src = None
 
@@ -74,23 +78,22 @@ def replace_macros(content, md_file):
             else:
                 js_example_src = None
 
-
             css_choice_fences = "\n\n".join(
                 f"""```css interactive-example-choice
 {css_choice.rstrip()}
 ```"""
-for css_choice in css_choices
+                for css_choice in css_choices
             )
 
             other_args = match.group(2).lstrip(",").strip()
             suffix = match.group(3).strip()
             return f"""{{{{InteractiveExample("{html.escape(meta["title"], quote=True)}"{f", {other_args}" if other_args else ""})}}}}
 
-{css_choice_fences}{f'''
+{css_choice_fences}
 
 ```html interactive-example
 {html_example_src}
-```
+```{f'''
 
 ```css interactive-example
 {css_example_src.rstrip()}

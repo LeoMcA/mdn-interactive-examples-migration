@@ -37,7 +37,7 @@ media_map = {
     "/media/examples/shadow.svg#element-id": "/shared-assets/images/examples/shadow.svg#element-id",
     "/media/examples/star.png": "/shared-assets/images/examples/star.png",
     "/media/examples/star2.png": "/shared-assets/images/examples/star2.png",
-    "/media/fonts/AmstelvarAlpha-VF.ttf": "/shared-assets/fonts/AmstelvarAlpha-VF.ttf",
+    "/media/fonts/AmstelvarAlpha-VF.ttf": "/shared-assets/fonts/variable-fonts/AmstelvarAlpha-VF.ttf",
     "/media/fonts/FiraSans-Italic.woff2": "/shared-assets/fonts/FiraSans-Italic.woff2",
     "/media/fonts/FiraSans-Regular.woff2": "/shared-assets/fonts/FiraSans-Regular.woff2",
     "/media/fonts/LeagueMono-VF.ttf": "/shared-assets/fonts/LeagueMono-VF.ttf",
