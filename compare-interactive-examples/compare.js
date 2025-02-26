@@ -181,7 +181,7 @@ async function collectVisualResults(
     ],
     defaultViewport: {
       width: 1500,
-      height: 300000,
+      height: 5000,
       isMobile: false,
       deviceScaleFactor: 1,
     },
@@ -556,21 +556,47 @@ async function getVisualOutputFromInteractiveExample(
     await page.goto(url, { timeout: 10000, waitUntil: "networkidle2" });
     if (queryCustomElement) {
       // New custom element version
-      const ie = await page.waitForSelector("interactive-example");
-      const playController = await page.waitForSelector(
-        "interactive-example >>> play-controller",
-        { timeout: 5000 }
-      );
-      const playRunner = await playController.waitForSelector("play-runner");
-      const outputIframe = await playRunner.waitForSelector(">>> iframe");
-      const frame = await outputIframe.contentFrame();
-      const body = await frame.waitForSelector("body");
-      screenshotTarget = outputIframe;
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      screenshot = await screenshotTarget.screenshot({
-        path: `/tmp/screen-${queryCustomElement}.png`,
-      });
-      return [screenshot];
+      try {
+        // try for choices layout
+        const template = await page.waitForSelector(
+          "interactive-example >>> .template-choices",
+          { timeout: 1200 }
+        );
+        const choiceWrapper = await template.$(".choice-wrapper");
+        const output = await template.$(".output-wrapper");
+        const choices = await choiceWrapper.$$(".choice");
+        screenshotTarget = output;
+        // we have to do multiple screenshots for this
+        let ret = [];
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        for (const [index, choice] of choices.entries()) {
+          await choice.hover();
+          await choice.click();
+          // we have a 0.3 .. 1.0 transition on the css, so wait a bit
+          await new Promise((resolve) => setTimeout(resolve, 1200));
+          screenshot = await screenshotTarget.screenshot({
+            path: `/tmp/screen-${queryCustomElement}-${index}.png`,
+          });
+          ret.push(screenshot);
+        }
+        return ret;
+      } catch (error) {
+        // tabbed interface
+        const playController = await page.waitForSelector(
+          "interactive-example >>> play-controller",
+          { timeout: 5000 }
+        );
+        const playRunner = await playController.waitForSelector("play-runner");
+        const outputIframe = await playRunner.waitForSelector(">>> iframe");
+        const frame = await outputIframe.contentFrame();
+        const body = await frame.waitForSelector("body");
+        screenshotTarget = outputIframe;
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        screenshot = await screenshotTarget.screenshot({
+          path: `/tmp/screen-${queryCustomElement}.png`,
+        });
+        return [screenshot];
+      }
     } else {
       // Old iframe version
       const iframe = await page.waitForSelector("iframe.interactive", {
@@ -600,13 +626,14 @@ async function getVisualOutputFromInteractiveExample(
           await choice.click();
           // we have a 0.3 .. 1.0 transition on the css, so wait a bit
           await new Promise((resolve) => setTimeout(resolve, 1200));
-          screenshot = await screenshotTarget.screenshot({});
+          screenshot = await screenshotTarget.screenshot({
+            path: `/tmp/screen-${queryCustomElement}-${index}.png`,
+          });
           ret.push(screenshot);
         }
         await output.hover();
         return ret;
       } catch (error) {
-        // console.log("tabbed version", error);
         // tabbed
         const inner = await frame.waitForSelector("#output-iframe");
         // fudge to align prod:
