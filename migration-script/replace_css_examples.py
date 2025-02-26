@@ -9,6 +9,9 @@ from bs4 import BeautifulSoup
 
 from lib import map_media
 
+blocklist = [
+]
+
 # Directory to search for all index.md files
 input_files_pattern = "./files/**/index.md"
 meta_files_pattern = "../interactive-examples/live-examples/css-examples/**/meta.json"
@@ -22,7 +25,8 @@ for meta_file in meta_files:
     with open(meta_file, "r") as file:
         data = json.load(file)
         for value in data["pages"].values():
-            meta_map[value["fileName"]] = value
+            if value["type"] == "css" and value["fileName"] not in blocklist:
+                meta_map[value["fileName"]] = value
 
 # Replace the macro with actual code blocks
 

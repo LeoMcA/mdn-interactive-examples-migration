@@ -59,4 +59,4 @@ def map_media(code):
         print(old_media)
         return match.group(0)
 
-    return re.sub(r"""([./]*\/media\/\S*)["']""", replace, code)
+    return re.sub(r"""([./]*\/media\/\S*?)["')]""", replace, code)
