@@ -9,11 +9,6 @@ import html
 from lib import map_media
 
 blocklist = [
-    "pseudo-class-host.html",
-    "pseudo-class-host-context.html",
-    "pseudo-class-host_function.html",
-    "pseudo-element-slotted.html",
-    "at-rule-namespace.html",
 ]
 
 # Directory to search for all index.md files
@@ -49,7 +44,7 @@ def replace_macros(content, md_file):
                 return match.group(0)  # keep the macro unchanged
 
             if 'css-examples' not in example_code_path:
-                return match.group(0) # ignore HTML examples
+                return match.group(0)  # ignore HTML examples
 
             try:
                 css_example_src_path = os.path.join(interactive_examples_folder,
@@ -83,7 +78,7 @@ def replace_macros(content, md_file):
 
             other_args = match.group(2).lstrip(",").strip()
             suffix = match.group(3).strip()
-            result = f"""{{{{InteractiveExample("{html.escape(meta["title"], quote=True)}"{f", {other_args}" if other_args else ""})}}}}
+            result = f"""{{{{InteractiveExample("{html.escape(meta["title"].replace("HTML Demo:", "CSS Demo:"), quote=True)}"{f", {other_args}" if other_args else ""})}}}}
 
 ```css interactive-example
 {css_example_src.rstrip()}
@@ -112,6 +107,7 @@ def replace_macros(content, md_file):
         return content
 
     return updated_content
+
 
 # Get all index.md files recursively
 md_files = glob.glob(input_files_pattern, recursive=True)
